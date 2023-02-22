@@ -3,12 +3,17 @@ package com.carlos.helpdesk.services;
 import java.util.List;
 import java.util.Optional;
 
+import javax.validation.Valid;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.carlos.helpdesk.domain.Pessoa;
 import com.carlos.helpdesk.domain.Tecnico;
 import com.carlos.helpdesk.domain.dtos.TecnicoDTO;
+import com.carlos.helpdesk.domain.repositories.PessoaRepository;
 import com.carlos.helpdesk.domain.repositories.TecnicoRepository;
+import com.carlos.helpdesk.services.exceptions.DataIntegrityViolationException;
 import com.carlos.helpdesk.services.exceptions.ObjectNotFoundException;
 
 @Service
@@ -16,6 +21,9 @@ public class TecnicoService {
 	
 	@Autowired
 	private TecnicoRepository tecnicoRepository;
+	
+	@Autowired
+	private PessoaRepository pessoaRepository;
 	
 	public Tecnico findById(Integer id) {
 		Optional<Tecnico> obj = tecnicoRepository.findById(id);
@@ -28,8 +36,29 @@ public class TecnicoService {
 
 	public Tecnico create(TecnicoDTO objDTO) {
 		objDTO.setId(null);
+		validaPorCpfEEmail(objDTO);
 		Tecnico newObj = new Tecnico(objDTO);
 		return tecnicoRepository.save(newObj);
+	}
+
+	public Tecnico update(Integer id, @Valid TecnicoDTO objDTO) {
+		objDTO.setId(id);
+		Tecnico oldObj = findById(id);
+		validaPorCpfEEmail(objDTO);
+		oldObj = new Tecnico(objDTO);
+		return tecnicoRepository.save(oldObj);
+	}
+	
+	private void validaPorCpfEEmail(TecnicoDTO objDTO) {
+		Optional<Pessoa> obj = pessoaRepository.findByCpf(objDTO.getCpf());
+		if(obj.isPresent() && obj.get().getId() != objDTO.getId()) {
+			throw new DataIntegrityViolationException("CPF já cadastrado");
+		}
+		
+		obj = pessoaRepository.findByEmail(objDTO.getEmail());
+		if(obj.isPresent() && obj.get().getId() != objDTO.getId()) {
+			throw new DataIntegrityViolationException("Email já cadastrado");
+		}	
 	}
 
 }
